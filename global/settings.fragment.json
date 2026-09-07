@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/guard.py\""
+          }
+        ]
+      }
+    ]
+  },
+  "sandbox": {
+    "network": { "strictAllowlist": true },
+    "filesystem": {
+      "denyRead": ["~/.ssh", "~/.aws", "~/.kube", "~/.gnupg", "~/.netrc"]
+    }
+  }
+}

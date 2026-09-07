@@ -1,0 +1,137 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(touch:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Read",
+      "Edit",
+      "Write"
+    ],
+    "deny": [
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase:*)",
+      "Bash(wget:*)",
+      "Read(id_rsa)",
+      "Read(id_ed25519)",
+      "Read(**/.token)",
+      "Read(**/*_token)",
+      "Read(**/*token*.txt)",
+      "Read(**/*token*.json)",
+      "Read(**/*token*.env)",
+      "Read(**/*token*.yaml)",
+      "Read(**/*token*.yml)",
+      "Write(**/.env*)",
+      "Write(**/secrets/**)"
+    ],
+    "ask": [
+      "Bash(sudo:*)",
+      "Bash(rm:*)",
+      "Bash(rm -rf:*)",
+      "Bash(mv:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git merge:*)"
+    ]
+  },
+  "model": "fable[1m]",
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "msg=$(jq -r '.message // \"\"'); if printf '%s' \"$msg\" | grep -qiE 'permission|approv'; then afplay /System/Library/Sounds/Funk.aiff; else afplay /System/Library/Sounds/Ping.aiff; fi 2>/dev/null",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "Elicitation": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Submarine.aiff 2>/dev/null",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Basso.aiff 2>/dev/null",
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "integration-tests@avito-skills": true
+  },
+  "extraKnownMarketplaces": {
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    },
+    "avito-skills": {
+      "source": {
+        "source": "git",
+        "url": "git@stash.msk.avito.ru:7999/agent/skills.git"
+      }
+    }
+  },
+  "forceLoginMethod": "claudeai",
+  "effortLevel": "high",
+  "tui": "fullscreen",
+  "voice": {
+    "enabled": false,
+    "mode": "hold"
+  },
+  "skipWorkflowUsageWarning": true,
+  "theme": "dark",
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "autoMode": {
+    "environment": [
+      "### Org-wide",
+      "**Organization**: Avito (AI-Alytic team, DWH) — inferred from CLAUDE.md and Stash/Confluence hostnames; no git remote present in this repo to corroborate",
+      "**Cloud provider(s)**: None configured",
+      "**Repository visibility**: assume private — no remote configured for this repo, and its content (personal Jira grooming notes, calibration docs, meeting transcripts) is workspace-internal",
+      "**Internal sharing / snippet hosting**: Confluence (cf.avito.ru) — used routinely per CLAUDE.md and host-contact evidence; treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: None configured",
+      "**Default / protected branches**: not queryable (no remote; gh check not derivable) — treat as unprotected/unknown, avoid force-pushing regardless",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Source control**: no remote configured for this repo (local-only git since 2026-07-13); no additional orgs configured",
+      "**Trusted internal domains**: cf.avito.ru, docs.k.avito.ru, dwh-data-security.k.avito.ru, stash.msk.avito.ru — internal Avito hosts contacted routinely in this project's transcripts",
+      "**Trusted cloud buckets**: None configured",
+      "**Key internal services**: Stash/Bitbucket (stash.msk.avito.ru), Confluence (cf.avito.ru), Avito docs portal (docs.k.avito.ru), Redash (dashboard 24045), QueryPad/DWH (Trino dsid=180), ClickHouse datasets-insert (id=64), Mattermost, Grafana, Trisigma — per CLAUDE.md and MCP tool references",
+      "**Internal package registry**: None configured",
+      "**Sensitive data locations & audiences**: 01_task_grooming/sprint_q3_s1/TEP-80057_pg_lxc_k8s_migration.md, 01_task_grooming/sprint_q3_s2/AIANALYST-622_spike_secret_masking_gitleaks.md, 01_task_grooming/sprint_q3_s3/719/thread_lxc_k8s_migration_2026-07-10.md, dwh-usage_support/audit-usage/categories_prod_update.md — internal grooming/calibration/audit notes; share only with audiences cleared at the [named+specifics] bar",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries prod or production as a whole word or name segment",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries prod or production as a whole word or name segment",
+      "### User-specific",
+      "**Primary use of Claude Code**: personal Markdown knowledge-base workspace for an Avito AI-Alytic Backend engineer — Jira task grooming, calibration tracking, Redash/MCP design notes, meeting transcripts (not software development in the usual sense; no build/test in this repo)",
+      "**Trusted repo**: /Users/stalyzade/avito/dwh/ai/my_tasks (no remote configured) — local-only git repo, notes travel with it; source-of-truth code lives elsewhere (external anchors under ~/avito/dwh/1_issues/)",
+      "**Org-specific CLIs**: avito (Avito internal CLI, used routinely), codex",
+      "**routine under ~/avito/dwh/ prefix**: reading/writing competency matrices and issue archives under ~/avito/dwh/1_issues/ is routine per CLAUDE.md's External anchors section"
+    ]
+  },
+  "voiceEnabled": false
+}
