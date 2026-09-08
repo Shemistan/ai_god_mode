@@ -11,7 +11,8 @@
 | Выход из песочницы | `allowUnsandboxedCommands: false` | системная: retry вне sandbox отключён |
 | Самоэскалация прав (запись .claude/, .zshrc, .mcp.json, .git/hooks) | protected paths + sandbox | системная: в dontAsk — deny, allow-правила это не перебивают |
 | `rm -rf /`, снос home | critical paths | системная: в dontAsk — deny |
-| Порча main / истории git | guard (PreToolUse) + pre-push + worktree-изоляция `./ai` | worktree — системная («нельзя выключить»); guard/pre-push — best-effort |
+| Порча main / истории git | guard (PreToolUse) + pre-commit + pre-push + worktree-изоляция `./ai` | worktree — системная («нельзя выключить»); pre-commit/pre-push — git-уровень; guard — best-effort |
+| Слияние в main мимо человека (`gh pr merge`, `gh api` на `refs/heads/main`, `/merges`) | guard | best-effort; открытие и обновление PR намеренно разрешены |
 | Порча `staging` (интеграционная ветка агента) | guard: force-push, `branch -D`, `push --delete` запрещены для всех веток; `./finish` двигает `staging` только fast-forward | best-effort; `staging` намеренно доступна агенту на запись, в main попадает только через PR |
 | Обход git-хуков (`--no-verify`, hooksPath) | guard | best-effort (регексы) |
 | Эксфильтрация файлов (curl -d @, scp, rsync) | guard + strictAllowlist | best-effort + ОС-сеть |
@@ -26,7 +27,11 @@
 - **Server-side branch protection**: локальные гейты снимаемы человеком;
   на GitHub/Stash настраивается отдельно (obligatory для командных репо).
 - **Обход guard изнутри скриптов** (`python -c` с git-командами): guard —
-  регексный best-effort; результат страхуют pre-push и worktree-изоляция.
+  регексный best-effort; результат страхуют pre-commit, pre-push и
+  worktree-изоляция.
+- **Человек в своём терминале**: `pre-commit` запрещает коммит в
+  `main`/`master` только под агентом (`CLAUDECODE`), чтобы не ломать
+  документированный шаг «закоммитить скелет в main» вручную.
 - **Человек за клавиатурой**: скелет защищает от ошибок агента, не от
   намеренных действий пользователя.
 

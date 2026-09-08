@@ -5,5 +5,11 @@ set -e
 if [ -f global/hooks/test_guard.py ]; then
   python3 global/hooks/test_guard.py
   python3 .githooks/test_commit_msg.py
+  # Установленный guard мог протухнуть относительно репозиторного.
+  if [ -f "$HOME/.claude/hooks/guard.py" ] && \
+     ! cmp -s global/hooks/guard.py "$HOME/.claude/hooks/guard.py"; then
+    echo "⚠ ~/.claude/hooks/guard.py отличается от global/hooks/guard.py —" >&2
+    echo "  запусти ./install-global.sh, иначе правила guard'а не активны." >&2
+  fi
 fi
 # --- добавь сюда проверки своего проекта (линтер, тесты) ---

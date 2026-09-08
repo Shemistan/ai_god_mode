@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """PreToolUse-страж для автономного режима (dontAsk).
 
-Блокирует git-семантику (защита main, истории, обход хуков), эксфильтрацию
+Блокирует git/gh-семантику (защита main, истории, обход хуков), эксфильтрацию
 и обращения к секретам. Файловую и сетевую изоляцию обеспечивают sandbox и
 protected paths Claude Code — здесь не дублируются (см. SECURITY.md скелета).
+
+Ветки задач и `staging` агенту доступны: создание веток, merge в staging,
+push своей ветки и staging, открытие и обновление PR не блокируются.
+Защищены только `main`/`master` — включая слияние PR (`gh pr merge`).
 
 Контракт: JSON события на stdin; блок → exit 2 + причина в stderr (уходит
 модели); инструменты вне HANDLED → stdout-JSON permissionDecision=allow,
 чтобы dontAsk не денял их молча. Кривой вход → exit 0 (fail-open).
 """
-GUARD_VERSION = "1"
+GUARD_VERSION = "2"
 
 import datetime
 import json
@@ -26,6 +30,13 @@ _QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
 # git + глобальные опции перед подкомандой (-C ., -c k=v, --no-pager, …),
 # чтобы `git -C . push --force` и т.п. не обходили категории 1-3 ниже.
 _GIT = r"\bgit\b(?:\s+(?:-[cCp]\s*\S+|--[\w-]+(?:=\S+)?))*"
+_GH = r"\bgh\b(?:\s+--[\w-]+(?:=\S+)?)*"
+_PROT = r"(?:main|master)"
+
+# Разбиение составной команды: ветка внутри неё может смениться
+# (`git switch main && git commit …`), поэтому git-правила считаются
+# посегментно с «текущей» веткой на момент сегмента.
+_SEP = re.compile(r"\|\||&&|[;|&\n]")
 
 SECRET_PATTERNS = [
     r"\.env\b",
@@ -55,10 +66,41 @@ def secret_violation(text):
     return None
 
 
+def switch_target(u):
+    """Ветка, на которую переключается сегмент (или None).
+
+    `git switch -c feat staging` → feat (новая текущая ветка);
+    `git checkout main -- file` → None (восстановление файлов, не переключение).
+    """
+    m = re.search(_GIT + r"\s+(?:switch|checkout)\b([^|;&]*)", u)
+    if not m:
+        return None
+    args = m.group(1).split()
+    if "--" in args:
+        return None
+    for a in args:
+        if not a.startswith("-"):
+            return a.strip("'\"")
+    return None
+
+
 def bash_violation(c, branch=None):
     """Причина блокировки bash-команды или None. branch — текущая ветка."""
-    u = _unquoted(c)
+    cur = branch
+    # Режем уже вычищенную от кавычек команду, чтобы `;` и `&&` внутри
+    # сообщения коммита не порождали ложных сегментов.
+    for u in _SEP.split(_unquoted(c)):
+        v = git_violation(u, cur)
+        if v:
+            return v
+        t = switch_target(u)
+        if t:
+            cur = t
+    return other_violation(c)
 
+
+def git_violation(u, branch=None):
+    """Причина блокировки git/gh-семантики в одном сегменте команды."""
     # --- 1. Целостность гейтов ---
     if "hooksPath" in u:
         return "подмена core.hooksPath запрещена"
@@ -76,7 +118,10 @@ def bash_violation(c, branch=None):
             return "force-push запрещён"
         if "--delete" in rest or _flag(rest, "d") or re.search(r"\s:\S", rest):
             return "удаление удалённой ветки запрещено"
-        if re.search(r"(\s|:)(refs/heads/)?(main|master)(\s|$)", rest):
+        if "--mirror" in rest or "--all" in rest:
+            return ("push --all/--mirror затрагивает main/master — "
+                    "пушь свою ветку и staging явно")
+        if re.search(r"(\s|:)(refs/heads/)?" + _PROT + r"(\s|$)", rest):
             return "push в main/master запрещён — работай в ветке (./ai <task>)"
         if branch in PROTECTED:
             return "push с ветки %s запрещён — работай в ветке (./ai <task>)" % branch
@@ -99,15 +144,42 @@ def bash_violation(c, branch=None):
     if re.search(_GIT + r"\s+reflog\s+expire\b", u):
         return "git reflog expire запрещён"
 
-    # --- 3. Main защищён ---
+    # --- 3. Main защищён (любая манипуляция; staging и ветки задач — нет) ---
     if branch in PROTECTED and re.search(
-            _GIT + r"\s+(commit|merge|cherry-pick|am|revert|pull)\b", u):
+            _GIT + r"\s+(commit|merge|cherry-pick|am|revert|pull|reset)\b", u):
         return ("изменение ветки %s запрещено — создай ветку (./ai <task>)"
                 % branch)
-    if re.search(_GIT + r"\s+branch\s+-[a-zA-Z]*[fM][a-zA-Z]*\s+(main|master)\b", u):
-        return "перемещение main/master запрещено"
-    if re.search(_GIT + r"\s+(switch\s+-[a-zA-Z]*C|checkout\s+-[a-zA-Z]*B)[a-zA-Z]*\s+(main|master)\b", u):
+    if re.search(_GIT + r"\s+branch\b[^|;&]*(?:^|\s)-[a-zA-Z]+\s+" + _PROT + r"\b", u):
+        return "изменение main/master (git branch) запрещено"
+    if re.search(_GIT + r"\s+(switch\s+-[a-zA-Z]*C|checkout\s+-[a-zA-Z]*B)[a-zA-Z]*\s+" + _PROT + r"\b", u):
         return "пересоздание main/master запрещено"
+    if re.search(_GIT + r"\s+update-ref\b[^|;&]*\brefs/heads/" + _PROT + r"\b", u):
+        return "перемещение main/master (update-ref) запрещено"
+    if re.search(_GIT + r"\s+symbolic-ref\b[^|;&]*\brefs/heads/" + _PROT + r"\b", u):
+        return "перевод HEAD на main/master (symbolic-ref) запрещён"
+
+    # --- 3b. Main защищён и на стороне хостинга (gh) ---
+    # PR открывать и обновлять можно — сливать в main человек будет сам.
+    if re.search(_GH + r"\s+pr\s+merge\b", u):
+        return "слияние PR в main/master делает человек — gh pr merge запрещён"
+    if re.search(_GH + r"\s+repo\s+(delete|archive)\b", u):
+        return "удаление/архивация репозитория запрещены"
+    m = re.search(_GH + r"\s+api\b([^|;&]*)", u)
+    if m:
+        rest = m.group(1)
+        write = (re.search(r"(?:-X|--method)[=\s]+(POST|PATCH|PUT|DELETE)", rest, re.I)
+                 or re.search(r"(?:^|\s)(-f|-F|--field|--raw-field|--input)\b", rest))
+        if write and re.search(
+                r"(git/refs/heads/" + _PROT + r"|branches/" + _PROT
+                + r"|/merges\b|pulls/\d+/merge)", rest):
+            return "изменение main/master через gh api запрещено"
+
+    return None
+
+
+def other_violation(c):
+    """Причина блокировки не-git-семантики (секреты, эксфильтрация, система)."""
+    u = _unquoted(c)
 
     # --- 4. Секреты (второй пояс к sandbox.denyRead) ---
     v = secret_violation(c)
