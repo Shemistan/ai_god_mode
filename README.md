@@ -20,15 +20,19 @@
    ```
 
    Скрипт копирует `CLAUDE.md`, `ai`, `finish`, `check`, `bootstrap.sh`,
-   `.claude/` (dontAsk + sandbox), `.githooks/`, `docs/`, делает `git init`
-   и первый коммит, если их не было, и включает git-хуки.
+   `.claude/` (dontAsk + sandbox), `.githooks/`, `docs/` (индексы, грабли),
+   `tools/docs_gate.py`, `templates/go-service/`, делает `git init` и первый
+   коммит, если их не было, и включает git-хуки.
 
 2. **Заполнить секцию «О проекте»** в `~/path/to/project/CLAUDE.md`: что за
    проект, стек, как запускать, как тестировать. Это единственный контекст,
    который агент получает о проекте.
 
 3. **Добавить проектные проверки** в `./check` (линтер, тесты) — их гоняет
-   pre-commit и `./finish`.
+   pre-commit и `./finish`. Уже встроено: гейт документации (шапки и статусы
+   спек/планов/ADR, автоиндексы — `docs/README.md`) и `make check` для каждого
+   сервиса `app/<svc>/` с Makefile. Go-сервис заводится из шаблона:
+   `mkdir -p app && cp -R templates/go-service app/<svc>` (см. `templates/go-service/README.md`).
 
 4. **Подключить origin и `gh`**, если ещё нет: `git remote add origin …`,
    `gh auth login -h github.com`. Без origin `./finish` только двигает
@@ -59,7 +63,8 @@
 
 **Обновить скелет в существующем проекте**: `new-project.sh` не перезаписывает
 файлы, поэтому скопируй руками `ai`, `finish`, `check`, `.githooks/`,
-`.claude/hooks/preflight.sh` и сверь разделы регламента в `CLAUDE.md`
+`.claude/hooks/preflight.sh`, `tools/docs_gate.py`, индексы `docs/**/README.md`
+(шапки спек/планов переведи на YAML — формат в `docs/README.md`) и сверь разделы регламента в `CLAUDE.md`
 (секцию «О проекте» не трогай). На новой машине хуки включаются один раз
 командой `sh bootstrap.sh`.
 

@@ -43,7 +43,14 @@ copy .githooks/pre-commit
 copy .githooks/commit-msg
 copy .githooks/commit_msg.py
 copy .githooks/pre-push
+copy tools/docs_gate.py
 copy docs/README.md
+copy docs/superpowers/README.md
+copy docs/decisions/README.md
+copy docs/грабли.md
+copy templates/go-service/Makefile
+copy templates/go-service/.golangci.yml
+copy templates/go-service/README.md
 mkdir -p "$DEST/docs/superpowers/specs" "$DEST/docs/superpowers/plans"
 
 cd "$DEST"
