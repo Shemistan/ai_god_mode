@@ -4,7 +4,9 @@ set -e
 cd "$(dirname "$0")" || exit 1
 mkdir -p "$HOME/.claude/hooks" global/backup
 cp global/hooks/guard.py "$HOME/.claude/hooks/guard.py"
-echo "✓ guard.py → ~/.claude/hooks/"
+cp global/hooks/preflight.sh "$HOME/.claude/hooks/preflight.sh"
+chmod +x "$HOME/.claude/hooks/preflight.sh"
+echo "✓ guard.py, preflight.sh → ~/.claude/hooks/"
 
 python3 - "$HOME/.claude/settings.json" global/settings.fragment.json <<'PYEOF'
 import copy

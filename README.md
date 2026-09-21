@@ -63,10 +63,16 @@
 
 **Обновить скелет в существующем проекте**: `new-project.sh` не перезаписывает
 файлы, поэтому скопируй руками `ai`, `finish`, `check`, `.githooks/`,
-`.claude/hooks/preflight.sh`, `tools/docs_gate.py`, индексы `docs/**/README.md`
-(шапки спек/планов переведи на YAML — формат в `docs/README.md`) и сверь разделы регламента в `CLAUDE.md`
-(секцию «О проекте» не трогай). На новой машине хуки включаются один раз
-командой `sh bootstrap.sh`.
+`.claude/hooks/preflight.sh` (обёртка над общим хуком), `tools/docs_gate.py`,
+индексы `docs/**/README.md` (шапки спек/планов переведи на YAML — формат в
+`docs/README.md`) и сверь разделы регламента в `CLAUDE.md` (секцию «О проекте»
+не трогай). На новой машине хуки включаются один раз командой `sh bootstrap.sh`.
+
+Логика preflight-хука общая: `global/hooks/preflight.sh` ставится в
+`~/.claude/hooks/` через `install-global.sh`, а `.claude/hooks/preflight.sh`
+в проекте — только обёртка, которая его вызывает. Правишь проверки в
+`global/hooks/preflight.sh`, запускаешь `install-global.sh`, и изменение
+действует во всех проектах сразу.
 
 ## Поток веток
 
