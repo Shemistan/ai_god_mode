@@ -1,3 +1,9 @@
+---
+тип: plan
+статус: завершено
+обновлено: 2026-09-02
+спека: 2026-09-02-autonomous-skeleton-design.md
+---
 # Autonomous Skeleton (ai-god-mode) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -9,8 +15,6 @@
 **Tech Stack:** POSIX sh, Python 3 (stdlib-only), unittest. macOS.
 
 **Spec:** `docs/superpowers/specs/2026-09-02-autonomous-skeleton-design.md`
-
-**Статус:** завершено (осталась Задача 11 — установка на машину)
 
 ## Global Constraints
 

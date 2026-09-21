@@ -1,22 +1,13 @@
 #!/bin/sh
-# UserPromptSubmit: блокирует работу, если защита не установлена.
+# UserPromptSubmit: обёртка над общим ~/.claude/hooks/preflight.sh (его ставит
+# install-global.sh из скелета). Логику правь в global/hooks/preflight.sh скелета,
+# а не здесь — тогда фикс разойдётся по всем проектам одним install-global.sh.
 # exit 2 = промпт блокируется, stderr уходит пользователю и модели.
 
-if [ ! -f "$HOME/.claude/hooks/guard.py" ]; then
-  echo "⛔ guard не установлен — запусти install-global.sh из скелета ai-god-mode" >&2
+G="$HOME/.claude/hooks/preflight.sh"
+# Вместо общего хука лежит обёртка (проект в $HOME) — не зацикливаемся.
+if [ -n "$AI_PREFLIGHT_WRAPPED" ] || [ ! -f "$G" ]; then
+  echo "⛔ общий preflight не установлен — запусти install-global.sh из скелета ai-god-mode" >&2
   exit 2
 fi
-if ! grep -q 'guard\.py' "$HOME/.claude/settings.json" 2>/dev/null; then
-  echo "⛔ guard.py не подключён PreToolUse-хуком в ~/.claude/settings.json — запусти install-global.sh" >&2
-  exit 2
-fi
-if [ "$(git config core.hooksPath 2>/dev/null)" != ".githooks" ]; then
-  echo "⛔ git-хуки не включены — запусти ./bootstrap.sh" >&2
-  exit 2
-fi
-# Напоминание (в контекст агента, не блокирует): сессия вне worktree.
-case "$PWD" in
-  */.claude/worktrees/*) : ;;
-*) echo "ℹ️ Сессия в main checkout: коммиты здесь запрещены. Для задачи с изменениями сначала EnterWorktree <slug>, затем git merge staging (см. CLAUDE.md «Старт задачи»)." ;;
-esac
-exit 0
+AI_PREFLIGHT_WRAPPED=1 exec sh "$G"

@@ -20,15 +20,19 @@
    ```
 
    Скрипт копирует `CLAUDE.md`, `ai`, `finish`, `check`, `bootstrap.sh`,
-   `.claude/` (dontAsk + sandbox), `.githooks/`, `docs/`, делает `git init`
-   и первый коммит, если их не было, и включает git-хуки.
+   `.claude/` (dontAsk + sandbox), `.githooks/`, `docs/` (индексы, грабли),
+   `tools/docs_gate.py`, `templates/go-service/`, делает `git init` и первый
+   коммит, если их не было, и включает git-хуки.
 
 2. **Заполнить секцию «О проекте»** в `~/path/to/project/CLAUDE.md`: что за
    проект, стек, как запускать, как тестировать. Это единственный контекст,
    который агент получает о проекте.
 
 3. **Добавить проектные проверки** в `./check` (линтер, тесты) — их гоняет
-   pre-commit и `./finish`.
+   pre-commit и `./finish`. Уже встроено: гейт документации (шапки и статусы
+   спек/планов/ADR, автоиндексы — `docs/README.md`) и `make check` для каждого
+   сервиса `app/<svc>/` с Makefile. Go-сервис заводится из шаблона:
+   `mkdir -p app && cp -R templates/go-service app/<svc>` (см. `templates/go-service/README.md`).
 
 4. **Подключить origin и `gh`**, если ещё нет: `git remote add origin …`,
    `gh auth login -h github.com`. Без origin `./finish` только двигает
@@ -59,9 +63,16 @@
 
 **Обновить скелет в существующем проекте**: `new-project.sh` не перезаписывает
 файлы, поэтому скопируй руками `ai`, `finish`, `check`, `.githooks/`,
-`.claude/hooks/preflight.sh` и сверь разделы регламента в `CLAUDE.md`
-(секцию «О проекте» не трогай). На новой машине хуки включаются один раз
-командой `sh bootstrap.sh`.
+`.claude/hooks/preflight.sh` (обёртка над общим хуком), `tools/docs_gate.py`,
+индексы `docs/**/README.md` (шапки спек/планов переведи на YAML — формат в
+`docs/README.md`) и сверь разделы регламента в `CLAUDE.md` (секцию «О проекте»
+не трогай). На новой машине хуки включаются один раз командой `sh bootstrap.sh`.
+
+Логика preflight-хука общая: `global/hooks/preflight.sh` ставится в
+`~/.claude/hooks/` через `install-global.sh`, а `.claude/hooks/preflight.sh`
+в проекте — только обёртка, которая его вызывает. Правишь проверки в
+`global/hooks/preflight.sh`, запускаешь `install-global.sh`, и изменение
+действует во всех проектах сразу.
 
 ## Поток веток
 
@@ -75,9 +86,16 @@ push, PR `staging → main` (создать или обновить). Остан
 когда задача выполнена целиком, и отдаёт ссылку на PR. Ты проверяешь PR и
 сливаешь в main. Для PR нужен авторизованный `gh` (`gh auth login`).
 
+Агенту **разрешено**: заводить ветки, вливать их в `staging`, пушить свою
+ветку и `staging` в origin, открывать и обновлять PR `staging → main`.
+Агенту **запрещено** всё, что трогает `main`/`master`: коммит, push,
+`branch -f/-m/-d main`, `update-ref`, `push --all/--mirror`, `gh pr merge`
+и запись в main через `gh api`. Слияние PR — только человек.
+
 Точка входа — обычный `claude` в корне проекта. Preflight-хук напоминает
-агенту в контекст, что он в main checkout и должен уйти в worktree; guard и
-pre-push не дают ему коммитить или пушить в main, если он это проигнорирует.
+агенту в контекст, что он в main checkout и должен уйти в worktree; guard,
+pre-commit и pre-push не дают ему коммитить или пушить в main, если он это
+проигнорирует.
 
 ## Перед сменой машины
 
